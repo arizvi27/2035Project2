@@ -10,8 +10,8 @@
 
 
 /*
-Student Name:
-Date:
+Student Name: Ali Rizvi
+Date: November 4th, 2022
 =======================
 ECE 2035 Project 2-1:
 =======================
@@ -136,8 +136,19 @@ struct _HashTableEntry
  */
 static HashTableEntry *createHashTableEntry(unsigned int key, void *value)
 {
-    // TODO: Implement
+    // Allocate memory for the HashTableEntry 
+    HashTableEntry* entry = (HashTableEntry*)malloc(sizeof(HashTableEntry));
+
+    // Initialize struct members 
+    entry->key = key;
+    entry->value = value;
+    entry->next = NULL;
+    //return the pointer to the HashTableEntry
+    return entry;
 }
+
+
+
 
 /**
  * findItem
@@ -151,7 +162,27 @@ static HashTableEntry *createHashTableEntry(unsigned int key, void *value)
  */
 static HashTableEntry *findItem(HashTable *hashTable, unsigned int key)
 {
-    // TODO: Implement
+    //In order to get to an item, must get the bucket index using the hash function in hashtable
+    HashTableEntry* newPtr;
+    unsigned int bucketLocation = hashTable->hash(key);
+    newPtr = hashTable->buckets[bucketLocation];
+    if (!newPtr) {
+        return NULL;
+    }
+    if (newPtr->key == key) {
+        // returns the pointer to the entry 
+        return newPtr;
+    }
+
+    HashTableEntry* currentNode = newPtr->next;
+    while (currentNode) {
+        if (currentNode->key == key) {
+            return currentNode;
+        }
+        currentNode = currentNode->next;
+    }
+    return NULL;
+
 }
 
 /****************************************************************************
@@ -191,54 +222,143 @@ HashTable *createHashTable(HashFunction hashFunction, unsigned int numBuckets)
     return newTable;
 }
 
-void destroyHashTable(HashTable *hashTable)
-{
-    // TODO: Implement
-    // 1. Loop through each bucket of the hash table to remove all items.
-    //      1a. set temp to be the first entry of the ith bucket
-    //      1b. delete all entries
-       
-    // 2. Free buckets
-    
-    // 3. Free hash table
+void destroyHashTable(HashTable *hashTable) {
+    unsigned int numBucs = hashTable->num_buckets;
+    for (unsigned int i = 0; i < numBucs; i++) { //will loop through each bucket of the hashtable 
+        if (hashTable->buckets[i] == NULL) { //if the hashtable bucket points to null already nothing needed to be done
+            continue;
+        } else {
+            HashTableEntry* current = hashTable->buckets[i]; //traverses through each entry and frees up the space of each entry 
+            if (current == NULL) { //if current is null then can continue to the next bucket since this bucket has no entries 
+                continue;
+            } else { //this else statement contains code that will traverse through the linked list of hashtable entrys and frees the space for each one. 
+                HashTableEntry* nextNode;
+                void* val;
+                
+                while (current) {  //while loop that traverses through code and removes each node by freeing up space from the value and node itself until null hit
+                    nextNode = current->next;
+                    val = current->value;
+                    if (val) {
+                        free(current->value);
+                    }
+                    free(current);
+                    current = nextNode;
+                }
+            }
+        }
+    }
+    free(hashTable->buckets); //will free all of the buckest of the hashtable
+    free(hashTable);        // will free up the hashtable in memory 
+   
+    return;
 }
 
 void *insertItem(HashTable *hashTable, unsigned int key, void *value)
 {
-    // TODO: Implement
-    //1. First, we want to check if the key is present in the hash table.
-        
-    //2. If the key is present in the hash table, store new value and return old value
+    HashTableEntry* entr = findItem(hashTable, key); //to check if the entry exists for that key 
 
-    //3. If not, create entry for new value and return NULL
+    if (entr) {                 // to check if an entry does exist already 
+        void* oldval = entr->value; //this will keep track of the old value 
+        entr->value = value; // this will replace the entry's value with the new value
+        return oldval;
+    } else {
+        unsigned int bucketNum = hashTable->hash(key);     //this will retreieve the bucket id 
+        HashTableEntry* bucketEntrys = hashTable->buckets[bucketNum]; //get pointer to the bucket 
+        HashTableEntry* newEntry = createHashTableEntry(key, value);
+        hashTable->buckets[bucketNum] = newEntry; //adds the new entry to the start of the bucket 
+
+        if (bucketEntrys) {                // if bucket is not empty 
+            newEntry->next = bucketEntrys;   // connect the original linked list to the new head
+        }                                       // otherwise do nothing else
+        return NULL;
+    }
+
 }
 
 void *getItem(HashTable *hashTable, unsigned int key)
 {
-    // TODO: Implement
-    //1. First, we want to check if the key is present in the hash table.
+    HashTableEntry* entry = findItem(hashTable, key); //gets entry with key and hashtable information
 
-    //2. If the key exist, return the value
-    
-    //3. If not. just return NULL
+    if (entry) {
+        return entry->value; //returns the value of the entry previously created 
+    }
+    return NULL;
 }
 
 void *removeItem(HashTable *hashTable, unsigned int key)
 {
-    // TODO: Implement
-    //1. Get the bucket number and the head entry
+
+    HashTableEntry* entry = findItem(hashTable, key);
     
-    //2. If the head holds the key, change the head to the next value, and return the old value
-    
-    //3. If not the head, earch for the key to be removed 
-    
-    //4. Uf the key is not present in the list, return NULL
-    
-    //5. Unlink node from the list and return old value
+    if (entry) { //if the entry exists and is not null we can continue to preform the remove operations
+        void* val = entry->value;
+        unsigned int bucketNum = hashTable->hash(key);
+        HashTableEntry* currentNode = hashTable->buckets[bucketNum];
+
+        if (!currentNode) {
+            return val;
+        }
+        //if the node that we want to remove is located within the first node 
+        if (currentNode->key == key) {
+            hashTable->buckets[bucketNum] = currentNode->next;  // this will make the bucket point to the next value in the list
+            free(currentNode);
+            return val;
+        }
+        //if the node that we want to remove is not within the first node 
+        while(currentNode) {
+            if (currentNode->next->key == key) {
+                // the next node needs to be removed
+                HashTableEntry* temp = currentNode->next->next;
+                free(currentNode->next);
+                currentNode->next = temp;
+                return val;
+            }
+            currentNode = currentNode->next;
+        }
+
+        return val;
+    }
+
+    return NULL; //will return NULL if no entries exist of if the key is not present in the list 
+
 }
 
 void deleteItem(HashTable *hashTable, unsigned int key)
 {
-    // TODO: Implement
-    //1. Remove the entry and free the returned data
+    HashTableEntry* entry = findItem(hashTable, key); //this will check if the entry exists or not will save a lot of code
+
+    if (entry) { //if the entry exists and is not nulll we can continue to preform the operations to remove it 
+        unsigned int bucketNum = hashTable->hash(key);
+        HashTableEntry* currentNode = hashTable->buckets[bucketNum];
+
+        if (!currentNode) { //if the currentNode is null then we do not need to do anything and we just return the function technically this scenario should not happen
+            return;
+        }
+        void* val; //will hold the value of the currentNode to be removed 
+
+        //if the node that we want to remove is located within the first node 
+        if (currentNode->key == key) {
+            hashTable->buckets[bucketNum] = currentNode->next;  // this will make the bucket point to the next value in the list
+            val = currentNode->value;
+            if (val) {
+                free(val); //frees up the value space
+            }
+            free(currentNode); //will free up the currentNode space 
+        }
+        //if the node that we want to remove is not within the first node 
+        while(currentNode) { //will terminate when the currentNode is equal to NULL
+            if (currentNode->next->key == key) { //this will check ahead to see if the next entry's key matches the input key 
+                // the next node needs to be removed
+                HashTableEntry* temp = currentNode->next->next;
+                val = currentNode->next->value;
+                if (val) {
+                    free(val);
+                }
+                free(currentNode->next);
+                currentNode->next = temp;
+            }
+            currentNode = currentNode->next;
+        }
+    }
+
 }

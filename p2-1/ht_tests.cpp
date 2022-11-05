@@ -73,6 +73,7 @@ TEST(InitTest, CreateDestroyHashTable)
 {
 	HashTable* ht = createHashTable(hash, BUCKET_NUM);
 	destroyHashTable(ht);
+	
 }
 
 ////////////////
@@ -167,6 +168,96 @@ TEST(RemoveTest, SingleInvalidRemove)
 	destroyHashTable(ht);
 }
 
+TEST(RemoveTest, MultipleInvalidRemove) 
+{
+
+	//When the hash table is not empty, the remove function should work and return null if input is invalid 
+	HashTable* ht = createHashTable(hash, 3);
+
+	size_t num_items = 2;
+	HTItem* m[num_items];
+	make_items(m, num_items);
+	//inserts two random numbers to show a non empty hashtable
+	insertItem(ht, 1, m[0]);
+	insertItem(ht, 0, m[1]);
+
+
+	//key does not exist so it should return null
+
+	EXPECT_EQ(NULL, removeItem(ht, 3));
+	destroyHashTable(ht);
+}
+TEST(RemoveTest, RemoveAtMiddle) 
+{
+	//this test will test to see if my code preforms the remove at Middle function correctly
+	HashTable* ht = createHashTable(hash, 4);
+
+	size_t num_items = 4;
+	HTItem* m[num_items];
+	make_items(m, num_items);
+	// will insert items in the 
+	insertItem(ht, 4, m[0]);
+	insertItem(ht, 8, m[1]);
+	insertItem(ht, 12, m[2]);
+	insertItem(ht, 16, m[3]);
+
+	// these should return with the value of the key that is being removed, first step of checking removal process
+	EXPECT_EQ(m[2], removeItem(ht, 12));
+	EXPECT_EQ(m[1], removeItem(ht, 8));
+	//these should return null since we preformed the remove operation on them 
+	EXPECT_EQ(NULL, getItem(ht, 12));
+	EXPECT_EQ(NULL, getItem(ht, 8));
+	destroyHashTable(ht);
+	//still need to free up the value space since I am preforming the remove at item method which does not free up value 
+	free(m[1]);
+	free(m[2]);
+
+}
+
+TEST(RemoveTest, RemoveAtHeadMultipleBuckets) 
+{
+	HashTable* ht = createHashTable(hash, 4); //changed number of buckets because I want to make sure test runs unique to scenarios I planned out
+
+	//insert items to add to the hash table 
+	size_t num_items = 7;
+	HTItem* m[num_items];
+	make_items(m, num_items);
+	// sanity checks to make sure insert is also working as it should
+	EXPECT_EQ(NULL, insertItem(ht, 0, m[1]));
+	insertItem(ht, 4, m[0]);
+	insertItem(ht, 3, m[2]);
+	insertItem(ht, 3, m[3]);
+	// another sanity check since I am adding to a same key which I already added should replace with new value of m[4]
+	EXPECT_EQ(m[0], insertItem(ht, 4, m[4]));
+	insertItem(ht, 1, m[5]);
+	insertItem(ht, 1, m[6]);
+
+	EXPECT_EQ(m[4], removeItem(ht, 4)); //removing from head 
+
+	EXPECT_EQ(m[3], removeItem(ht, 3)); //removing from head of another bucket
+	EXPECT_EQ(m[6], getItem(ht, 1));
+
+	EXPECT_EQ(m[6], removeItem(ht, 1));
+
+	EXPECT_EQ(m[1], removeItem(ht, 0));
+
+	
+	EXPECT_EQ(NULL, removeItem(ht, 0)); //should be null removing from empty head 
+	EXPECT_EQ(NULL, removeItem(ht, 1));
+	EXPECT_EQ(NULL, removeItem(ht, 2));
+	EXPECT_EQ(NULL, removeItem(ht, 3));
+
+	destroyHashTable(ht);
+	free(m[0]);
+	free(m[1]);
+	free(m[2]);
+	free(m[3]);
+	free(m[4]);
+	free(m[5]);
+	free(m[6]);
+
+}
+
 ///////////////////
 // Insersion tests
 ///////////////////
@@ -194,3 +285,4 @@ TEST(InsertTest, InsertAsOverwrite)
 	destroyHashTable(ht);
 	free(m[0]);    // don't forget to free item 0
 }
+
